@@ -1,0 +1,9 @@
+gepa[full]
+datasets
+python-dotenv
+pydantic
+transformers
+torch
+accelerate
+litellm
+protobuf
