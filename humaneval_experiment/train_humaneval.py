@@ -67,8 +67,8 @@ MAX_METRIC_CALLS = 500  # Budget for metric evaluations
 REFLECTION_MINIBATCH_SIZE = 5  # Examples per reflection batch
 
 # LLM Configuration
-LITELLM_MAX_WORKERS = 2  # Parallel requests (reduce to avoid rate limits)
-TASK_LM = "gpt-4.1-mini"  # LLM for code generation
+LITELLM_MAX_WORKERS = 10  # Parallel requests for faster evaluation
+TASK_LM = "gpt-3.5-turbo"  # LLM for code generation (weaker model for more room to improve)
 REFLECTION_LM = "gpt-5"   # LLM for reflection/prompt optimization
 
 # Code execution
@@ -94,23 +94,7 @@ random.seed(RANDOM_SEED)
 # ============================================================================
 
 SEED_PROMPT = {
-    "system_prompt": """You are a Python programming assistant. Your task is to implement Python functions based on the given signature and docstring.
-
-Rules:
-1. Output ONLY the function implementation (the function body)
-2. Do NOT include the function signature - it's already provided
-3. Do NOT include any explanations or comments outside the code
-4. Do NOT wrap the code in markdown code blocks
-5. Make sure your code is correct and handles edge cases
-
-Example format:
-If given:
-def add(a: int, b: int) -> int:
-    \"\"\"Add two numbers.\"\"\"
-
-You should output:
-    return a + b
-"""
+    "system_prompt": """Complete the below function."""
 }
 
 

@@ -56,15 +56,15 @@ DATA_DIR = EXPERIMENT_DIR / "data"
 
 # Path to the run directory containing optimized_prompt.txt
 # Update this to point to your specific run directory
-RUN_DIR = RESULTS_DIR / "gepa_humaneval_results_latest"
+RUN_DIR = RESULTS_DIR / "gepa_humaneval_results_20251203_084234"
 
 # Test configuration
-TEST_PERCENTAGE = 20  # Percentage of test set to use (1-100). E.g., 20 = ~12 examples from 64
+TEST_PERCENTAGE = 100  # Percentage of test set to use (1-100). Use 100 for full evaluation
 TEST_CSV = DATA_DIR / "humaneval_test.csv"
 
 # LLM Configuration
-TASK_LM = "gpt-4.1-mini"
-MAX_WORKERS = 2
+TASK_LM = "gpt-3.5-turbo"  # Must match the model used during training
+MAX_WORKERS = 10
 EXECUTION_TIMEOUT = 5.0
 
 # Batch size for checkpointing
