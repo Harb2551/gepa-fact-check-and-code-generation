@@ -135,11 +135,14 @@ class HFLocalModel:
             )
 
         if self._torch is not None and str(self.device).startswith("cuda"):
+            print(f"[HFLocalModel] Loading model to {self.device}...")
             try:
                 self.model.to(self.device)
-            except Exception:
+            except Exception as e:
+                print(f"[HFLocalModel] Failed to move to {self.device}: {e}")
                 self.device = "cpu"
         else:
+            print(f"[HFLocalModel] Using device: {self.device}")
             try:
                 self.model.to("cpu")
             except Exception:
@@ -280,6 +283,7 @@ class HumanEvalAdapter(GEPAAdapter[HumanEvalDataInst, HumanEvalTrajectory, Human
             self.litellm = litellm
         
         self.model = model
+        self._hf_local_model = None  # Cache for local HF model
         self.timeout = timeout
         self.failure_score = failure_score
         self.max_litellm_workers = max_litellm_workers
@@ -339,8 +343,11 @@ class HumanEvalAdapter(GEPAAdapter[HumanEvalDataInst, HumanEvalTrajectory, Human
             # Support routing to a local Hugging Face model using the
             # `hf/<model_id>` prefix.
             if self.model.startswith("hf/"):
-                model_id = self.model.split("/", 1)[1]
-                local_model = HFLocalModel(model_id)
+                if self._hf_local_model is None:
+                    model_id = self.model.split("/", 1)[1]
+                    self._hf_local_model = HFLocalModel(model_id)
+                
+                local_model = self._hf_local_model
                 
                 responses = []
                 for messages in messages_batch:
