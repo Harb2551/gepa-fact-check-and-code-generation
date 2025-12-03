@@ -429,7 +429,7 @@ class TestEvaluationOrchestrator:
         """Load and convert test data"""
         # First, prefer a CSV produced by the few-shot generator if present.
         # The CSV may contain few_shot entries or may be a 0-shot CSV (no few_shot).
-        candidates_csv = [Path.cwd() / FEWSHOT_TEST_FILE, self.run_dir / FEWSHOT_TEST_FILE]
+        candidates_csv = [Path.cwd() / FEWSHOT_TEST_FILE, self.run_dir / FEWSHOT_TEST_FILE, Path(__file__).parent / FEWSHOT_TEST_FILE]
         for c in candidates_csv:
             if c.exists():
                 try:
