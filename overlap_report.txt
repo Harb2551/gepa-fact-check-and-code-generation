@@ -1,0 +1,8 @@
+Checking files:
+D:\New York University\Third Semester\Natural Language Processing\Project\Final Work\gepa-fact-check-and-code-generation\hover_experiment\hover_fewshot.csv
+D:\New York University\Third Semester\Natural Language Processing\Project\Final Work\gepa-fact-check-and-code-generation\hover_experiment\hover_fewshot_test.csv
+Train IDs: 100
+Test IDs: 500
+Overlap count: 100
+WARNING: Data leakage detected!
+First 10 overlapping IDs: ['53', '48', '52', '73', '83', '25', '34', '62', '69', '19']
