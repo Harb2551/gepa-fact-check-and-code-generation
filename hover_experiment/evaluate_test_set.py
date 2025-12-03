@@ -227,8 +227,12 @@ class TestEvaluationOrchestrator:
             res_file = self.run_dir / f"eval_results_{p_type}.json"
             if res_file.exists():
                 print(f"\nLoading existing {p_type} results from {res_file}")
-                with open(res_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                try:
+                    with open(res_file, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except Exception as e:
+                    print(f"Warning: failed to load existing results from {res_file}: {e}")
+                    print("Re-running evaluation...")
             
             print(f"\n" + "="*70)
             print(f"EVALUATING {p_type.upper()} PROMPT")
