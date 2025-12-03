@@ -53,13 +53,26 @@ _load_env()
 # =====================
 # USER CONFIGURABLE VARIABLES
 # =====================
-RUN_DIR = "./results/gepa_hover_results_20251109_003303"
+# =====================
+# USER CONFIGURABLE VARIABLES
+# =====================
+def get_latest_run_dir(base_path="./results"):
+    try:
+        all_subdirs = [os.path.join(base_path, d) for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
+        latest_subdir = max(all_subdirs, key=os.path.getmtime)
+        return latest_subdir
+    except Exception:
+        return "./results/gepa_hover_results_20251109_003303"
+
+RUN_DIR = get_latest_run_dir()
+print(f"Using RUN_DIR: {RUN_DIR}")
+
 # Optional: path to a separate run directory that contains a few-shot-optimized
 # optimized_prompt.txt. If set, that optimized prompt will also be evaluated on
 # the same test set and results saved alongside the main run's reports.
-RUN_DIR_FEWSHOT = "./results/gepa_hover_results_20251109_004549"
+RUN_DIR_FEWSHOT = None 
 TEST_SIZE = 500
-TASK_LM = "gpt-4.1-mini"
+TASK_LM = "hf/Qwen/Qwen3-8B"
 MAX_WORKERS = 2
 BATCH_SIZE = 50
 # =====================
