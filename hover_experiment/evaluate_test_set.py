@@ -225,7 +225,8 @@ class TestEvaluationOrchestrator:
 
         # Helper to load/save intermediate results
         def get_or_run_eval(prompt, p_type, examples):
-            res_file = self.run_dir / f"eval_results_{p_type}.json"
+            suffix = "_fewshot" if USE_FEWSHOT_FOR_EVAL else ""
+            res_file = self.run_dir / f"eval_results_{p_type}{suffix}.json"
             if res_file.exists():
                 print(f"\nLoading existing {p_type} results from {res_file}")
                 try:
