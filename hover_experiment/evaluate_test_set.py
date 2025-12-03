@@ -11,6 +11,7 @@ Usage:
 
 import os
 import json
+import time
 import csv
 import random
 from pathlib import Path
@@ -270,7 +271,6 @@ class TestEvaluationOrchestrator:
 
                 # Save the few-shot evaluation results to a JSON file inside the
                 # few-shot run directory (so results live with that experiment).
-                import json, time
                 ts = time.strftime("%Y%m%d_%H%M%S")
                 target_dir = self.fewshot_run_dir or self.run_dir
                 out_file = target_dir / f"fewshot_optimized_results_{ts}.json"
@@ -341,7 +341,6 @@ class TestEvaluationOrchestrator:
         
         # Step 8: Final comparison JSON (baseline vs optimized, and vs few-shot if present)
         try:
-            import time
             ts = time.strftime("%Y%m%d_%H%M%S")
             comparison = {
                 "timestamp": ts,
@@ -390,7 +389,6 @@ class TestEvaluationOrchestrator:
                 }
 
             # Save comparison JSON to main run_dir
-            import json
             comp_file = self.run_dir / f"comparison_results_{ts}.json"
             with open(comp_file, 'w', encoding='utf-8') as cf:
                 json.dump(comparison, cf, indent=2)
