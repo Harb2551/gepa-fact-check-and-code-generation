@@ -39,15 +39,26 @@ def _load_env():
 
 _load_env()
 
+import argparse
+
 # ============================================================================
 # CONFIGURATION - Modify these variables as needed
 # ============================================================================
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train HoVer with GEPA")
+    parser.add_argument("--use_fewshot", action="store_true", help="Enable few-shot training")
+    parser.add_argument("--output_dir", type=str, default=None, help="Directory to save results")
+    parser.add_argument("--task_lm", type=str, default="hf/Qwen/Qwen3-8B", help="LLM for task execution")
+    return parser.parse_args()
+
+args = parse_args()
 
 # Set to True to use custom adapter, False to use default adapter
 USE_CUSTOM_ADAPTER = True
 
 # Checkpoint behavior
-USE_TIMESTAMP_DIR = True  # Set to False to resume from existing directory
+USE_TIMESTAMP_DIR = True if args.output_dir is None else False # Set to False to resume from existing directory
 RESUME_FROM_CHECKPOINT = True  # Set to True to resume from checkpoint
 
 # Dataset sizes
@@ -59,13 +70,13 @@ REFLECTION_MINIBATCH_SIZE = 5  # Smaller batches for gentler optimization
 
 LITELLM_MAX_WORKERS = 2  # Reduce parallel requests to avoid rate limits
 
-TASK_LM = "hf/Qwen/Qwen3-8B"  # LLM for task execution
+TASK_LM = args.task_lm  # LLM for task execution
 REFLECTION_LM = "gpt-5"  # LLM for reflection
 
 # Few-shot configuration: when True, train_hover will look for FEWSHOT_FILE;
 # if it's missing it will run the local generator to create it, then attach
 # the few-shot examples to training rows under the 'few_shot' key.
-USE_FEWSHOT = True
+USE_FEWSHOT = args.use_fewshot
 FEWSHOT_FILE = "hover_fewshot.csv"
 
 # Set seed for reproducibility
@@ -229,7 +240,15 @@ def main():
         adapter = None  # Will use DefaultAdapter
     
     # 8. Determine run directory
-    if USE_TIMESTAMP_DIR:
+    # 8. Determine run directory
+    if args.output_dir:
+        run_dir = args.output_dir
+        if not os.path.exists(run_dir):
+            print(f"Creating output directory: {run_dir}")
+            os.makedirs(run_dir, exist_ok=True)
+        else:
+            print(f"Using existing output directory: {run_dir}")
+    elif USE_TIMESTAMP_DIR:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = f"./results/gepa_hover_results_{timestamp}"
         print(f"Creating new run directory: {run_dir}")

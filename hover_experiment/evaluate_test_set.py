@@ -53,9 +53,22 @@ _load_env()
 # =====================
 # USER CONFIGURABLE VARIABLES
 # =====================
+import argparse
+
 # =====================
 # USER CONFIGURABLE VARIABLES
 # =====================
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate HoVer Test Set")
+    parser.add_argument("--prompt_file", type=str, default=None, help="Path to specific prompt file to evaluate")
+    parser.add_argument("--use_fewshot", action="store_true", help="Enable few-shot inference (inject examples)")
+    parser.add_argument("--output_file", type=str, default=None, help="Path to save evaluation results JSON")
+    parser.add_argument("--task_lm", type=str, default="hf/Qwen/Qwen3-8B", help="LLM for task execution")
+    parser.add_argument("--run_dir", type=str, default=None, help="Run directory containing prompts (optional)")
+    return parser.parse_args()
+
+args = parse_args()
+
 def get_latest_run_dir(base_path="./results"):
     try:
         all_subdirs = [os.path.join(base_path, d) for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
@@ -64,7 +77,7 @@ def get_latest_run_dir(base_path="./results"):
     except Exception:
         return "./results/gepa_hover_results_20251109_003303"
 
-RUN_DIR = get_latest_run_dir()
+RUN_DIR = args.run_dir if args.run_dir else get_latest_run_dir()
 print(f"Using RUN_DIR: {RUN_DIR}")
 
 # Optional: path to a separate run directory that contains a few-shot-optimized
@@ -72,7 +85,7 @@ print(f"Using RUN_DIR: {RUN_DIR}")
 # the same test set and results saved alongside the main run's reports.
 RUN_DIR_FEWSHOT = None 
 TEST_SIZE = 500
-TASK_LM = "hf/Qwen/Qwen3-8B"
+TASK_LM = args.task_lm
 MAX_WORKERS = 2
 BATCH_SIZE = 50
 # =====================
@@ -82,7 +95,7 @@ BATCH_SIZE = 50
 # (named by FEWSHOT_TEST_FILE). If the file is missing it will be generated
 # from the test examples using FewShotGenerator and written into the
 # few-shot run directory when available or into CWD otherwise.
-USE_FEWSHOT_FOR_EVAL = False
+USE_FEWSHOT_FOR_EVAL = args.use_fewshot
 FEWSHOT_TEST_FILE = "hover_fewshot_test.csv"
 FEWSHOT_K = 3
 
@@ -392,6 +405,19 @@ class TestEvaluationOrchestrator:
                     print(f"✓ Final comparison saved to few-shot run dir: {copy_path}")
                 except Exception as e:
                     print(f"Warning: failed to write comparison into few-shot dir: {e}")
+            
+            # Save to specific output file if requested (for reproduction script)
+            if args.output_file:
+                try:
+                    out_path = Path(args.output_file)
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    # We want to save the 'optimized' accuracy specifically for the table
+                    # or the full comparison object. Let's save the full object.
+                    with open(out_path, 'w', encoding='utf-8') as of:
+                        json.dump(comparison, of, indent=2)
+                    print(f"✓ Results saved to specific output file: {out_path}")
+                except Exception as e:
+                    print(f"Warning: failed to write to output file {args.output_file}: {e}")
 
         except Exception as e:
             print(f"Warning: failed to write final comparison JSON: {e}")
@@ -458,6 +484,22 @@ class TestEvaluationOrchestrator:
     
     def _load_prompts(self) -> Tuple[Dict, Dict]:
         """Load seed and optimized prompts with UTF-8 encoding"""
+        
+        # If a specific prompt file is provided via CLI args, load it as 'optimized'
+        # and use a dummy seed prompt (or load it if needed).
+        # This supports the reproduction script which evaluates single prompts.
+        if args.prompt_file:
+            print(f"\nLoading specific prompt from {args.prompt_file}...")
+            p_file = Path(args.prompt_file)
+            if not p_file.exists():
+                raise FileNotFoundError(f"Prompt file not found: {p_file}")
+            
+            target_prompt = self._load_prompt_from_file(p_file)
+            
+            # For compatibility with existing flow, return it as both seed and optimized
+            # or handle it in run(). Here we return it as optimized, and dummy seed.
+            return {"system_prompt": "DUMMY SEED"}, target_prompt
+
         print(f"\nLoading prompts from {self.run_dir}...")
         
         seed_prompt_file = self.run_dir / "seed_prompt.txt"
@@ -469,15 +511,18 @@ class TestEvaluationOrchestrator:
             config_file = self.run_dir / "experiment_config.json"
             seed_prompt = self._extract_seed_from_config(config_file, seed_prompt_file)
             if not seed_prompt:
-                raise FileNotFoundError(f"Could not find or extract seed prompt")
+                # Fallback if no config
+                seed_prompt = {"system_prompt": "Given a claim and an evidence Answer SUPPORTED or NOT_SUPPORTED."}
         else:
             seed_prompt = self._load_prompt_from_file(seed_prompt_file)
         
         # Load optimized prompt
         if not optimized_prompt_file.exists():
-            raise FileNotFoundError(f"Optimized prompt not found at {optimized_prompt_file}")
-        
-        optimized_prompt = self._load_prompt_from_file(optimized_prompt_file)
+             # If optimized prompt missing, just use seed as optimized (baseline run)
+             print("Optimized prompt not found, using seed as optimized")
+             optimized_prompt = seed_prompt
+        else:
+            optimized_prompt = self._load_prompt_from_file(optimized_prompt_file)
         
         print("✓ Prompts loaded successfully")
         return seed_prompt, optimized_prompt
