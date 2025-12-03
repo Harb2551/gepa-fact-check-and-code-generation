@@ -1,0 +1,22 @@
+{
+  "timestamp": "20251203_061423",
+  "test_size": 500,
+  "few_shot": {
+    "injected": false,
+    "file": null,
+    "k": 3
+  },
+  "baseline": {
+    "accuracy": 0.526,
+    "correct": 263,
+    "total": 500
+  },
+  "optimized": {
+    "accuracy": 0.534,
+    "correct": 267,
+    "total": 500,
+    "delta_absolute": 0.008000000000000007,
+    "delta_percent": 1.5209125475285183,
+    "additional_correct": 4
+  }
+}

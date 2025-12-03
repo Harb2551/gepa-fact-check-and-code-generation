@@ -88,7 +88,7 @@ print(f"Using RUN_DIR: {RUN_DIR}")
 RUN_DIR_FEWSHOT = None 
 TEST_SIZE = 500
 TASK_LM = args.task_lm
-MAX_WORKERS = 2
+MAX_WORKERS = 10
 BATCH_SIZE = 50
 # =====================
 

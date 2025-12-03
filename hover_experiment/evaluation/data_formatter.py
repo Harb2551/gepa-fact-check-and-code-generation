@@ -74,10 +74,16 @@ Context:
 
         answer = map_hover_label(label_raw)
         
-        return {
+        ret = {
             "input": input_text,
             "answer": answer,
             "additional_context": {
                 "id": str(example.get('id', '')),
             }
         }
+        
+        # Preserve few_shot if present (critical for few-shot evaluation)
+        if 'few_shot' in example:
+            ret['few_shot'] = example['few_shot']
+            
+        return ret

@@ -68,7 +68,7 @@ VAL_SIZE = 30  # Smaller validation set
 MAX_METRIC_CALLS = 200  # Reduced budget to prevent over-optimization
 REFLECTION_MINIBATCH_SIZE = 5  # Smaller batches for gentler optimization
 
-LITELLM_MAX_WORKERS = 2  # Reduce parallel requests to avoid rate limits
+LITELLM_MAX_WORKERS = 10  # Reduce parallel requests to avoid rate limits
 
 TASK_LM = args.task_lm  # LLM for task execution
 REFLECTION_LM = "gpt-5"  # LLM for reflection
