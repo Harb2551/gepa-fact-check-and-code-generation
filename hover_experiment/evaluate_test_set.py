@@ -132,6 +132,8 @@ class TestEvaluationOrchestrator:
         fewshot_results = None
         
         # Step 1: Load test data
+        # Ensure reproducibility for checkpoints
+        random.seed(42)
         test_examples = self._load_test_data()
         
         # Step 2: Load prompts
@@ -206,24 +208,30 @@ class TestEvaluationOrchestrator:
             except Exception as e:
                 print(f"Warning: failed to generate/load few-shot test CSV: {e}")
 
+        # Helper to load/save intermediate results
+        def get_or_run_eval(prompt, p_type, examples):
+            res_file = self.run_dir / f"eval_results_{p_type}.json"
+            if res_file.exists():
+                print(f"\nLoading existing {p_type} results from {res_file}")
+                with open(res_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            
+            print(f"\n" + "="*70)
+            print(f"EVALUATING {p_type.upper()} PROMPT")
+            print("="*70)
+            res = evaluator.evaluate_with_checkpoints(prompt, examples, p_type, self.batch_size)
+            
+            # Save results to avoid re-running
+            with open(res_file, 'w', encoding='utf-8') as f:
+                json.dump(res, f, indent=2)
+            return res
+
         # Step 4: Evaluate seed prompt (few-shots will be present if flag True)
-        print("\n" + "="*70)
-        print("EVALUATING SEED PROMPT")
-        print("="*70)
-        seed_results = evaluator.evaluate_with_checkpoints(
-            seed_prompt, test_examples, "seed", self.batch_size
-        )
+        seed_results = get_or_run_eval(seed_prompt, "seed", test_examples)
         print(f"✓ Seed Prompt Accuracy: {seed_results['accuracy']:.2%}")
         
-        
-
         # Step 5: Evaluate optimized prompt
-        print("\n" + "="*70)
-        print("EVALUATING OPTIMIZED PROMPT")
-        print("="*70)
-        optimized_results = evaluator.evaluate_with_checkpoints(
-            optimized_prompt, test_examples, "optimized", self.batch_size
-        )
+        optimized_results = get_or_run_eval(optimized_prompt, "optimized", test_examples)
         print(f"✓ Optimized Prompt Accuracy: {optimized_results['accuracy']:.2%}")
 
         # Optional: if a separate few-shot run dir is provided, evaluate its
