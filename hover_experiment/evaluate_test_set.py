@@ -10,6 +10,7 @@ Usage:
 """
 
 import os
+import sys
 import json
 import time
 import csv
@@ -444,7 +445,9 @@ class TestEvaluationOrchestrator:
                                 add_ctx = json.loads(r.get('additional_context') or '{}')
                             except Exception:
                                 add_ctx = {}
-                            ex = {'input': inp, 'answer': ans, 'additional_context': add_ctx}
+                            # Handle missing 'evidence' column by defaulting to empty string
+                            evidence = r.get('evidence', '')
+                            ex = {'input': inp, 'answer': ans, 'additional_context': add_ctx, 'evidence': evidence}
                             # attach few_shot only when configured to use few-shot for eval
                             if USE_FEWSHOT_FOR_EVAL:
                                 fs = r.get('few_shot')
@@ -586,6 +589,7 @@ def main():
     except Exception as e:
         print(f"\n\n✗ Error during evaluation: {e}")
         print("Progress has been saved. Run again to resume.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
