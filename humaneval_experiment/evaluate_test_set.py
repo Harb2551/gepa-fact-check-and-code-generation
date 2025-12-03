@@ -44,6 +44,16 @@ def _load_env():
 
 _load_env()
 
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate HumanEval with GEPA")
+    parser.add_argument("--run_dir", type=str, default=None, help="Path to run directory")
+    parser.add_argument("--task_lm", type=str, default=None, help="LLM for task execution (overrides config)")
+    return parser.parse_args()
+
+args = parse_args()
+
 
 # ============================================================================
 # USER CONFIGURABLE VARIABLES
@@ -55,16 +65,25 @@ RESULTS_DIR = EXPERIMENT_DIR / "results"
 DATA_DIR = EXPERIMENT_DIR / "data"
 
 # Path to the run directory containing optimized_prompt.txt
+# Path to the run directory containing optimized_prompt.txt
 # Update this to point to your specific run directory
-RUN_DIR = RESULTS_DIR / "gepa_humaneval_results_latest"
+if args.run_dir:
+    RUN_DIR = Path(args.run_dir)
+else:
+    # Try to find latest if not specified
+    # This will be handled in main() or we can set a default here
+    # For now let's keep the hardcoded default as fallback but it's better to find latest
+    RUN_DIR = RESULTS_DIR / "gepa_humaneval_results_latest"  # Placeholder, will be resolved later
 
 # Test configuration
-TEST_PERCENTAGE = 20  # Percentage of test set to use (1-100). E.g., 20 = ~12 examples from 64
+TEST_PERCENTAGE = 100  # Percentage of test set to use (1-100). Use 100 for full evaluation
 TEST_CSV = DATA_DIR / "humaneval_test.csv"
 
 # LLM Configuration
-TASK_LM = "gpt-4.1-mini"
-MAX_WORKERS = 2
+# LLM Configuration
+# TASK_LM will be loaded from config or args
+DEFAULT_TASK_LM = "hf/Qwen/Qwen3-8B"
+MAX_WORKERS = 10
 EXECUTION_TIMEOUT = 5.0
 
 # Batch size for checkpointing
@@ -802,70 +821,62 @@ def find_latest_run_dir() -> Path:
     if not run_dirs:
         raise FileNotFoundError(f"No run directories found in {RESULTS_DIR}")
     
-    # Sort by name (timestamp) and get the latest
-    run_dirs.sort(key=lambda x: x.name, reverse=True)
-    latest = run_dirs[0]
+    # Sort by modification time (newest first)
+    run_dirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     
-    print(f"Found {len(run_dirs)} run directories")
-    print(f"Using latest: {latest.name}")
-    
-    return latest
+    return run_dirs[0]
 
 
 def main():
     """Main entry point."""
     
-    if "OPENAI_API_KEY" not in os.environ:
-        print("ERROR: OPENAI_API_KEY not found in environment variables!")
-        return
-    
     # Determine run directory
-    run_dir = RUN_DIR
-    
-    # If RUN_DIR doesn't exist, try to find the latest
-    if not run_dir.exists():
-        print(f"Configured RUN_DIR not found: {run_dir}")
-        print("Searching for latest run directory...")
+    if args.run_dir:
+        run_dir = Path(args.run_dir)
+    else:
         try:
             run_dir = find_latest_run_dir()
-        except FileNotFoundError as e:
-            print(f"ERROR: {e}")
-            print("Please run train_humaneval.py first to create a results directory.")
+            print(f"Auto-detected latest run directory: {run_dir}")
+        except FileNotFoundError:
+            print("No run directories found. Please specify --run_dir")
             return
+
+    if not run_dir.exists():
+        print(f"Error: Run directory not found: {run_dir}")
+        return
     
-    print(f"\n{'=' * 70}")
-    print(f"EVALUATION RUN DIRECTORY: {run_dir}")
-    print(f"{'=' * 70}")
+    # Determine Task LM
+    task_lm = DEFAULT_TASK_LM
     
-    # Calculate test size from percentage
-    # First, count total examples in test CSV
-    total_test_examples = 64  # Default
-    if TEST_CSV.exists():
-        with open(TEST_CSV, 'r', newline='', encoding='utf-8') as f:
-            import csv as csv_module
-            reader = csv_module.DictReader(f)
-            total_test_examples = sum(1 for _ in reader)
+    # Try to load from config
+    config_path = run_dir / "experiment_config.json"
+    if config_path.exists():
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            if 'hyperparameters' in config and 'task_lm' in config['hyperparameters']:
+                task_lm = config['hyperparameters']['task_lm']
+                print(f"Loaded Task LM from config: {task_lm}")
+        except Exception as e:
+            print(f"Warning: Could not load config: {e}")
+            
+    # Override with arg if provided
+    if args.task_lm:
+        task_lm = args.task_lm
+        print(f"Overriding Task LM with: {task_lm}")
+        
+    print(f"Using Task LM: {task_lm}")
+
+    orchestrator = TestEvaluationOrchestrator(
+        run_dir=str(run_dir),
+        test_size=164 if TEST_PERCENTAGE == 100 else int(164 * TEST_PERCENTAGE / 100), # HumanEval is 164
+        task_lm=task_lm,
+        max_workers=MAX_WORKERS,
+        timeout=EXECUTION_TIMEOUT,
+        batch_size=BATCH_SIZE
+    )
     
-    test_size = max(1, int(total_test_examples * TEST_PERCENTAGE / 100))
-    print(f"Test set: {test_size} examples ({TEST_PERCENTAGE}% of {total_test_examples})")
-    
-    try:
-        orchestrator = TestEvaluationOrchestrator(
-            run_dir=run_dir,
-            test_size=test_size,
-            task_lm=TASK_LM,
-            max_workers=MAX_WORKERS,
-            timeout=EXECUTION_TIMEOUT,
-            batch_size=BATCH_SIZE
-        )
-        orchestrator.run()
-    except KeyboardInterrupt:
-        print("\n\n⚠ Evaluation interrupted by user. Progress has been saved.")
-        print("Run the same command again to resume from checkpoint.")
-    except Exception as e:
-        print(f"\n\n✗ Error during evaluation: {e}")
-        print("Progress has been saved. Run again to resume.")
-        raise
+    orchestrator.run()
 
 
 if __name__ == "__main__":

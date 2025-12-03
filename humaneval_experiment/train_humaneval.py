@@ -48,6 +48,16 @@ def _load_env():
 
 _load_env()
 
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train HumanEval with GEPA")
+    parser.add_argument("--task_lm", type=str, default="hf/Qwen/Qwen3-8B", help="LLM for task execution")
+    parser.add_argument("--reflection_lm", type=str, default="gpt-4o", help="LLM for reflection")
+    return parser.parse_args()
+
+args = parse_args()
+
 
 # ============================================================================
 # CONFIGURATION - Modify these variables as needed
@@ -67,9 +77,9 @@ MAX_METRIC_CALLS = 500  # Budget for metric evaluations
 REFLECTION_MINIBATCH_SIZE = 5  # Examples per reflection batch
 
 # LLM Configuration
-LITELLM_MAX_WORKERS = 2  # Parallel requests (reduce to avoid rate limits)
-TASK_LM = "gpt-4.1-mini"  # LLM for code generation
-REFLECTION_LM = "gpt-5"   # LLM for reflection/prompt optimization
+LITELLM_MAX_WORKERS = 10  # Parallel requests for faster evaluation
+TASK_LM = args.task_lm  # LLM for code generation
+REFLECTION_LM = args.reflection_lm   # LLM for reflection/prompt optimization
 
 # Code execution
 EXECUTION_TIMEOUT = 5.0  # Seconds per test execution
@@ -94,23 +104,7 @@ random.seed(RANDOM_SEED)
 # ============================================================================
 
 SEED_PROMPT = {
-    "system_prompt": """You are a Python programming assistant. Your task is to implement Python functions based on the given signature and docstring.
-
-Rules:
-1. Output ONLY the function implementation (the function body)
-2. Do NOT include the function signature - it's already provided
-3. Do NOT include any explanations or comments outside the code
-4. Do NOT wrap the code in markdown code blocks
-5. Make sure your code is correct and handles edge cases
-
-Example format:
-If given:
-def add(a: int, b: int) -> int:
-    \"\"\"Add two numbers.\"\"\"
-
-You should output:
-    return a + b
-"""
+    "system_prompt": """Complete the below function."""
 }
 
 
