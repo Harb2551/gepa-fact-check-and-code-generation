@@ -165,7 +165,7 @@ class TestEvaluationOrchestrator:
         fewshot_csv_path = None
         if USE_FEWSHOT_FOR_EVAL:
             try:
-                candidates = [Path.cwd() / FEWSHOT_TEST_FILE, self.run_dir / FEWSHOT_TEST_FILE]
+                candidates = [Path.cwd() / FEWSHOT_TEST_FILE, self.run_dir / FEWSHOT_TEST_FILE, Path(__file__).parent / FEWSHOT_TEST_FILE]
                 target_path = None
                 for c in candidates:
                     if c.exists():
