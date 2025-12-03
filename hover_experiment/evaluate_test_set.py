@@ -457,7 +457,7 @@ class TestEvaluationOrchestrator:
                                     except Exception:
                                         parsed = fs
                                     ex['few_shot'] = parsed
-                            test_examples.append(self.data_formatter.hover_to_gepa_format(ex) if hasattr(self.data_formatter, 'hover_to_gepa_format') else ex)
+                            test_examples.append(ex)
                     random.shuffle(test_examples)
                     test_examples = test_examples[:self.test_size]
                     print(f"✓ Using {len(test_examples)} test examples from CSV: {c}")
