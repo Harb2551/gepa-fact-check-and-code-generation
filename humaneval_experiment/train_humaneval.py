@@ -53,7 +53,7 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Train HumanEval with GEPA")
     parser.add_argument("--task_lm", type=str, default="hf/Qwen/Qwen3-8B", help="LLM for task execution")
-    parser.add_argument("--reflection_lm", type=str, default="gpt-4o", help="LLM for reflection")
+    parser.add_argument("--reflection_lm", type=str, default="gpt-5", help="LLM for reflection")
     return parser.parse_args()
 
 args = parse_args()
