@@ -6,8 +6,10 @@ This script optimizes prompts for fact verification on the HoVer dataset using G
 
 Usage:
     pip install gepa[full] datasets python-dotenv pydantic
-    python train_hover.py
+    python train_hover.py --use_fewshot --task_lm gpt-3.5-turbo
 """
+
+import argparse
 
 from datasets import load_dataset
 import os
@@ -80,8 +82,38 @@ def hover_to_gepa_format(example):
     """
     return DataFormatter.hover_to_gepa_format(example)
 
+    return DataFormatter.hover_to_gepa_format(example)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train HoVer with GEPA")
+    parser.add_argument("--use_fewshot", action="store_true", help="Enable few-shot training (default: False)")
+    parser.add_argument("--no_fewshot", action="store_false", dest="use_fewshot", help="Disable few-shot training")
+    parser.add_argument("--task_lm", type=str, default=None, help="LLM for task execution")
+    parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers")
+    
+    # Set defaults that match the global variables if not specified
+    parser.set_defaults(use_fewshot=USE_FEWSHOT)
+    return parser.parse_args()
+
 
 def main():
+    args = parse_args()
+    
+    # Override globals with args
+    global USE_FEWSHOT, TASK_LM, LITELLM_MAX_WORKERS
+    if args.use_fewshot is not None:
+        USE_FEWSHOT = args.use_fewshot
+    if args.task_lm:
+        TASK_LM = args.task_lm
+    if args.workers:
+        LITELLM_MAX_WORKERS = args.workers
+
+    print(f"Configuration:")
+    print(f"  USE_FEWSHOT: {USE_FEWSHOT}")
+    print(f"  TASK_LM: {TASK_LM}")
+    print(f"  WORKERS: {LITELLM_MAX_WORKERS}")
+
     # 1. Load HoVer dataset from Hugging Face
     print("Loading HoVer dataset...")
     ds = load_dataset("Dzeniks/hover")

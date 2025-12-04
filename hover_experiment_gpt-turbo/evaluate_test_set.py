@@ -6,8 +6,10 @@ Evaluates both seed and optimized prompts on the HoVer test set and saves compar
 Implements SOLID principles and checkpoint support for interruption recovery.
 
 Usage:
-    python evaluate_test_set.py
+    python evaluate_test_set.py --run_dir ./results/my_run --use_fewshot_eval
 """
+
+import argparse
 
 import os
 import json
@@ -496,8 +498,39 @@ class TestEvaluationOrchestrator:
 # ============================================================================
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate HoVer Test Set")
+    parser.add_argument("--run_dir", type=str, default=None, help="Path to run directory containing prompts")
+    parser.add_argument("--use_fewshot_eval", action="store_true", help="Enable few-shot INFERENCE (inject examples into prompt)")
+    parser.add_argument("--no_fewshot_eval", action="store_false", dest="use_fewshot_eval", help="Disable few-shot INFERENCE")
+    parser.add_argument("--task_lm", type=str, default=None, help="LLM for task execution")
+    parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers")
+    
+    parser.set_defaults(use_fewshot_eval=USE_FEWSHOT_FOR_EVAL)
+    return parser.parse_args()
+
+
 def main():
     """Main entry point"""
+    args = parse_args()
+
+    # Override globals with args
+    global RUN_DIR, USE_FEWSHOT_FOR_EVAL, TASK_LM, MAX_WORKERS
+    if args.run_dir:
+        RUN_DIR = args.run_dir
+    if args.use_fewshot_eval is not None:
+        USE_FEWSHOT_FOR_EVAL = args.use_fewshot_eval
+    if args.task_lm:
+        TASK_LM = args.task_lm
+    if args.workers:
+        MAX_WORKERS = args.workers
+
+    print(f"Configuration:")
+    print(f"  RUN_DIR: {RUN_DIR}")
+    print(f"  USE_FEWSHOT_FOR_EVAL: {USE_FEWSHOT_FOR_EVAL}")
+    print(f"  TASK_LM: {TASK_LM}")
+    print(f"  WORKERS: {MAX_WORKERS}")
+
     # Use variables above instead of CLI args
     if "OPENAI_API_KEY" not in os.environ:
         print("ERROR: OPENAI_API_KEY not found in environment variables!")
