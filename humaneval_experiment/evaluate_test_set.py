@@ -699,11 +699,20 @@ class TestEvaluationOrchestrator:
             print("\n" + "=" * 70)
             print("PARTIAL EVALUATION COMPLETE")
             print("=" * 70)
-            print("Skipping full comparison report as not all data is available.")
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
             if seed_results:
-                print("Seed Results available.")
+                path = self.run_dir / f"seed_results_{timestamp}.json"
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(seed_results, f, indent=2)
+                print(f"✓ Seed results saved to: {path}")
+                
             if optimized_results:
-                print("Optimized Results available.")
+                path = self.run_dir / f"optimized_results_{timestamp}.json"
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(optimized_results, f, indent=2)
+                print(f"✓ Optimized results saved to: {path}")
     
     def _load_test_data(self) -> List[Dict]:
         """Load test data from deterministic CSV split."""
