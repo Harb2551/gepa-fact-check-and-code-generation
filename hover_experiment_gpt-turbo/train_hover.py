@@ -56,7 +56,7 @@ RESUME_FROM_CHECKPOINT = True  # Set to True to resume from checkpoint
 TRAIN_SIZE = 100  # Smaller training set to avoid overfitting
 VAL_SIZE = 30  # Smaller validation set
 
-MAX_METRIC_CALLS = 200  # Reduced budget to prevent over-optimization
+MAX_METRIC_CALLS = 120  # Reduced budget to prevent over-optimization
 REFLECTION_MINIBATCH_SIZE = 5  # Smaller batches for gentler optimization
 
 LITELLM_MAX_WORKERS = 10  # Reduce parallel requests to avoid rate limits
