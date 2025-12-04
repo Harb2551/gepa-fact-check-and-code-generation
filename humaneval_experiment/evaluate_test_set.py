@@ -50,6 +50,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate HumanEval with GEPA")
     parser.add_argument("--run_dir", type=str, default=None, help="Path to run directory")
     parser.add_argument("--task_lm", type=str, default=None, help="LLM for task execution (overrides config)")
+    parser.add_argument("--eval_mode", type=str, default="all", choices=["all", "seed", "optimized"], help="Which prompts to evaluate")
+    parser.add_argument("--k", type=str, default="all", help="Comma-separated list of k values (e.g. '1,3,5') or 'all'")
     return parser.parse_args()
 
 args = parse_args()
@@ -604,9 +606,11 @@ class TestEvaluationOrchestrator:
         self.checkpoint_manager = CheckpointManager(self.run_dir / "eval_checkpoints")
         self.report_generator = ReportGenerator(self.run_dir)
     
-    def run(self):
+    def run(self, eval_mode: str = "all", k_values: List[int] = None):
         """Execute the full evaluation pipeline."""
-        
+        if k_values is None:
+            k_values = [1, 3, 5]
+            
         # Step 1: Load test data
         test_examples = self._load_test_data()
         
@@ -621,82 +625,85 @@ class TestEvaluationOrchestrator:
         )
         evaluator = PromptEvaluator(adapter, self.checkpoint_manager)
         
+        seed_results = {}
+        optimized_results = {}
+        
         # Step 4: Evaluate seed prompt
-        print("\n" + "=" * 70)
-        print("EVALUATING SEED PROMPT")
-        print("=" * 70)
-        seed_results = evaluator.evaluate_with_checkpoints(
-            seed_prompt, test_examples, "seed", self.batch_size
-        )
-        print(f"✓ Seed Prompt Pass@1: {seed_results['pass_at_1']:.2%}")
-        
-        # Step 4b: Evaluate Pass@3 for seed prompt
-        print("\n" + "-" * 70)
-        print("EVALUATING SEED PROMPT Pass@3")
-        print("-" * 70)
-        seed_pass3_results = evaluator.evaluate_pass_at_k(
-            seed_prompt, test_examples, k=3
-        )
-        seed_results['pass_at_3'] = seed_pass3_results['pass_at_k']
-        seed_results['pass_at_3_details'] = seed_pass3_results
-        print(f"✓ Seed Prompt Pass@3: {seed_pass3_results['pass_at_k']:.2%} ({seed_pass3_results['passed']}/{seed_pass3_results['total']})")
-        
-        # Step 4c: Evaluate Pass@5 for seed prompt (to give it a fair chance)
-        print("\n" + "-" * 70)
-        print("EVALUATING SEED PROMPT Pass@5")
-        print("-" * 70)
-        seed_pass5_results = evaluator.evaluate_pass_at_k(
-            seed_prompt, test_examples, k=5
-        )
-        seed_results['pass_at_5'] = seed_pass5_results['pass_at_k']
-        seed_results['pass_at_5_details'] = seed_pass5_results
-        print(f"✓ Seed Prompt Pass@5: {seed_pass5_results['pass_at_k']:.2%} ({seed_pass5_results['passed']}/{seed_pass5_results['total']})")
+        if eval_mode in ["all", "seed"]:
+            print("\n" + "=" * 70)
+            print("EVALUATING SEED PROMPT")
+            print("=" * 70)
+            
+            if 1 in k_values:
+                res = evaluator.evaluate_with_checkpoints(
+                    seed_prompt, test_examples, "seed", self.batch_size
+                )
+                seed_results.update(res)
+                print(f"✓ Seed Prompt Pass@1: {seed_results['pass_at_1']:.2%}")
+            
+            for k in k_values:
+                if k == 1: continue # Already done
+                
+                print("\n" + "-" * 70)
+                print(f"EVALUATING SEED PROMPT Pass@{k}")
+                print("-" * 70)
+                res = evaluator.evaluate_pass_at_k(
+                    seed_prompt, test_examples, k=k
+                )
+                seed_results[f'pass_at_{k}'] = res['pass_at_k']
+                seed_results[f'pass_at_{k}_details'] = res
+                print(f"✓ Seed Prompt Pass@{k}: {res['pass_at_k']:.2%} ({res['passed']}/{res['total']})")
         
         # Step 5: Evaluate optimized prompt
-        print("\n" + "=" * 70)
-        print("EVALUATING OPTIMIZED PROMPT")
-        print("=" * 70)
-        optimized_results = evaluator.evaluate_with_checkpoints(
-            optimized_prompt, test_examples, "optimized", self.batch_size
-        )
-        print(f"✓ Optimized Prompt Pass@1: {optimized_results['pass_at_1']:.2%}")
+        if eval_mode in ["all", "optimized"]:
+            print("\n" + "=" * 70)
+            print("EVALUATING OPTIMIZED PROMPT")
+            print("=" * 70)
+            
+            if 1 in k_values:
+                res = evaluator.evaluate_with_checkpoints(
+                    optimized_prompt, test_examples, "optimized", self.batch_size
+                )
+                optimized_results.update(res)
+                print(f"✓ Optimized Prompt Pass@1: {optimized_results['pass_at_1']:.2%}")
+            
+            for k in k_values:
+                if k == 1: continue # Already done
+                
+                print("\n" + "-" * 70)
+                print(f"EVALUATING OPTIMIZED PROMPT Pass@{k}")
+                print("-" * 70)
+                res = evaluator.evaluate_pass_at_k(
+                    optimized_prompt, test_examples, k=k
+                )
+                optimized_results[f'pass_at_{k}'] = res['pass_at_k']
+                optimized_results[f'pass_at_{k}_details'] = res
+                print(f"✓ Optimized Prompt Pass@{k}: {res['pass_at_k']:.2%} ({res['passed']}/{res['total']})")
         
-        # Step 5b: Evaluate Pass@3 for optimized prompt
-        print("\n" + "-" * 70)
-        print("EVALUATING OPTIMIZED PROMPT Pass@3")
-        print("-" * 70)
-        opt_pass3_results = evaluator.evaluate_pass_at_k(
-            optimized_prompt, test_examples, k=3
-        )
-        optimized_results['pass_at_3'] = opt_pass3_results['pass_at_k']
-        optimized_results['pass_at_3_details'] = opt_pass3_results
-        print(f"✓ Optimized Prompt Pass@3: {opt_pass3_results['pass_at_k']:.2%} ({opt_pass3_results['passed']}/{opt_pass3_results['total']})")
-        
-        # Step 5c: Evaluate Pass@5 for optimized prompt
-        print("\n" + "-" * 70)
-        print("EVALUATING OPTIMIZED PROMPT Pass@5")
-        print("-" * 70)
-        opt_pass5_results = evaluator.evaluate_pass_at_k(
-            optimized_prompt, test_examples, k=5
-        )
-        optimized_results['pass_at_5'] = opt_pass5_results['pass_at_k']
-        optimized_results['pass_at_5_details'] = opt_pass5_results
-        print(f"✓ Optimized Prompt Pass@5: {opt_pass5_results['pass_at_k']:.2%} ({opt_pass5_results['passed']}/{opt_pass5_results['total']})")
-        
-        # Step 6: Generate and save report
-        print("\n" + "=" * 70)
-        print("GENERATING EVALUATION REPORT")
-        print("=" * 70)
-        report = self.report_generator.generate_report(
-            seed_results, optimized_results, len(test_examples)
-        )
-        self.report_generator.save_report(report, seed_results, optimized_results)
-        
-        # Step 7: Save comparison JSON (matching HoVer format)
-        self.report_generator.save_comparison_json(report, seed_results, optimized_results)
-        
-        # Step 8: Print summary
-        self.report_generator.print_summary(report)
+        # Step 6: Generate and save report (ONLY IF BOTH AVAILABLE)
+        if seed_results and optimized_results and eval_mode == "all":
+            print("\n" + "=" * 70)
+            print("GENERATING EVALUATION REPORT")
+            print("=" * 70)
+            report = self.report_generator.generate_report(
+                seed_results, optimized_results, len(test_examples)
+            )
+            self.report_generator.save_report(report, seed_results, optimized_results)
+            
+            # Step 7: Save comparison JSON (matching HoVer format)
+            self.report_generator.save_comparison_json(report, seed_results, optimized_results)
+            
+            # Step 8: Print summary
+            self.report_generator.print_summary(report)
+        else:
+            print("\n" + "=" * 70)
+            print("PARTIAL EVALUATION COMPLETE")
+            print("=" * 70)
+            print("Skipping full comparison report as not all data is available.")
+            if seed_results:
+                print("Seed Results available.")
+            if optimized_results:
+                print("Optimized Results available.")
     
     def _load_test_data(self) -> List[Dict]:
         """Load test data from deterministic CSV split."""
@@ -867,6 +874,16 @@ def main():
         
     print(f"Using Task LM: {task_lm}")
 
+    # Parse k values
+    if args.k == "all":
+        k_values = [1, 3, 5]
+    else:
+        try:
+            k_values = [int(k.strip()) for k in args.k.split(",")]
+        except ValueError:
+            print(f"Error: Invalid k values: {args.k}")
+            return
+
     orchestrator = TestEvaluationOrchestrator(
         run_dir=str(run_dir),
         test_size=164 if TEST_PERCENTAGE == 100 else int(164 * TEST_PERCENTAGE / 100), # HumanEval is 164
@@ -876,7 +893,7 @@ def main():
         batch_size=BATCH_SIZE
     )
     
-    orchestrator.run()
+    orchestrator.run(eval_mode=args.eval_mode, k_values=k_values)
 
 
 if __name__ == "__main__":
